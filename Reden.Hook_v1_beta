@@ -1,0 +1,1107 @@
+-- RIVALS ANTI-CHEAT BYPASS (Minimal UI - Maximum Stealth)
+-- NO FEATURES - Just testing if UI loads without detection
+
+-- CRITICAL: Wait before doing ANYTHING
+task.wait(3)
+
+local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
+
+-- Step 1: Complete stealth mode - No hooks, no metamethods
+-- The less we modify, the less we get detected
+
+local success, Library = pcall(function()
+    return loadstring(game:HttpGet(repo .. 'Library.lua'))()
+end)
+
+if not success then
+    warn("Failed to load library")
+    return
+end
+
+local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
+local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
+
+-- Wait again before creating window
+task.wait(2)
+
+-- Create Window with minimal settings
+local Window = Library:CreateWindow({
+    Title = 'Reden.Hook',
+    Center = true,
+    AutoShow = true,
+    TabPadding = 8,
+    MenuFadeTime = 0.2
+})
+
+local Tabs = {
+    Combat = Window:AddTab('Combat'),
+    Visuals = Window:AddTab('Visuals'),
+    StreamProtection = Window:AddTab('Stream Protection'),
+    Settings = Window:AddTab('Settings'),
+}
+
+-- Visuals Group
+local VisualsGroup = Tabs.Visuals:AddRightGroupbox('Visuals')
+
+-- Crosshair variables
+local crosshairEnabled = false
+local crosshairSpinSpeed = 3.5
+local crosshairText = "Reden.Hook"
+local crosshairColor = Color3.fromRGB(255, 255, 255)
+local crosshairSize = 27.8
+local crosshairThickness = 2.3
+local crosshairGap = 8.9
+local outlineThickness = 2
+local centerDotEnabled = true
+local textOffsetY = 20
+local crosshairOffsetX = 0
+local crosshairOffsetY = -29.3
+local rainbowMode = false
+local rainbowSpeed = 2.2
+local crosshairGui = nil
+local spinConnection = nil
+local rainbowConnection = nil
+
+-- Visual Enhancement variables (SAFE)
+local fullbrightEnabled = false
+local ambientEnabled = false
+local fogEnabled = false
+local lightColorEnabled = false
+local lightColor = Color3.fromRGB(135, 206, 235) -- Default sky blue
+local originalLighting = {
+    ambient = nil,
+    brightness = nil,
+    fogEnd = nil,
+    fogStart = nil,
+    lightColor = nil
+}
+
+-- Auto Crouch variables
+local autoCrouchEnabled = false
+local autoCrouchKeybind = Enum.KeyCode.V -- Default keybind
+local crouchTime = 1 -- How long to hold C (in seconds)
+local beforeRepeatDelay = 0.5 -- Delay before repeating (in seconds)
+local autoCrouchConnection = nil
+local isAutoCrouching = false
+
+-- Keybind List variables
+local keybindListEnabled = false
+local keybindListAlwaysShow = true
+local keybindListGui = nil
+
+-- Rainbow color function
+local function getRainbowColor(offset)
+    local hue = (tick() * rainbowSpeed * 0.5 + (offset or 0)) % 1
+    return Color3.fromHSV(hue, 1, 1)
+end
+
+-- Visual Enhancement Functions (SAFE - No detection)
+local function toggleFullbright(enabled)
+    local lighting = game:GetService("Lighting")
+    
+    if enabled then
+        -- Save original settings
+        if not originalLighting.brightness then
+            originalLighting.brightness = lighting.Brightness
+            originalLighting.ambient = lighting.Ambient
+        end
+        
+        -- Apply fullbright
+        lighting.Brightness = 2
+        lighting.Ambient = Color3.fromRGB(255, 255, 255)
+        lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+    else
+        -- Restore original settings
+        if originalLighting.brightness then
+            lighting.Brightness = originalLighting.brightness
+            lighting.Ambient = originalLighting.ambient
+        end
+    end
+end
+
+local function toggleNoFog(enabled)
+    local lighting = game:GetService("Lighting")
+    
+    if enabled then
+        -- Save original settings
+        if not originalLighting.fogEnd then
+            originalLighting.fogEnd = lighting.FogEnd
+            originalLighting.fogStart = lighting.FogStart
+        end
+        
+        -- Remove fog
+        lighting.FogEnd = 100000
+        lighting.FogStart = 0
+    else
+        -- Restore original fog
+        if originalLighting.fogEnd then
+            lighting.FogEnd = originalLighting.fogEnd
+            lighting.FogStart = originalLighting.fogStart
+        end
+    end
+end
+
+local function changeLightColor(enabled)
+    local lighting = game:GetService("Lighting")
+    
+    if enabled then
+        -- Save original lighting settings
+        if not originalLighting.lightColor then
+            originalLighting.lightColor = {
+                ambient = lighting.Ambient,
+                outdoorAmbient = lighting.OutdoorAmbient,
+                colorShift_Bottom = lighting.ColorShift_Bottom,
+                colorShift_Top = lighting.ColorShift_Top
+            }
+        end
+        
+        -- Apply custom light color
+        lighting.Ambient = lightColor
+        lighting.OutdoorAmbient = lightColor
+        lighting.ColorShift_Bottom = lightColor
+        lighting.ColorShift_Top = lightColor
+    else
+        -- Restore original lighting
+        if originalLighting.lightColor then
+            lighting.Ambient = originalLighting.lightColor.ambient
+            lighting.OutdoorAmbient = originalLighting.lightColor.outdoorAmbient
+            lighting.ColorShift_Bottom = originalLighting.lightColor.colorShift_Bottom
+            lighting.ColorShift_Top = originalLighting.lightColor.colorShift_Top
+        end
+    end
+end
+
+local function updateLightColor()
+    if lightColorEnabled then
+        local lighting = game:GetService("Lighting")
+        lighting.Ambient = lightColor
+        lighting.OutdoorAmbient = lightColor
+        lighting.ColorShift_Bottom = lightColor
+        lighting.ColorShift_Top = lightColor
+    end
+end
+
+-- Auto Crouch Functions
+local function sendKeyPress(key)
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+    VirtualInputManager:SendKeyEvent(true, key, false, game)
+end
+
+local function sendKeyRelease(key)
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+    VirtualInputManager:SendKeyEvent(false, key, false, game)
+end
+
+local function autoCrouchLoop()
+    while isAutoCrouching do
+        -- Press C key
+        sendKeyPress(Enum.KeyCode.C)
+        print('[Auto Crouch] Pressing C for', crouchTime, 'seconds')
+        
+        -- Hold for crouchTime seconds
+        task.wait(crouchTime)
+        
+        -- Release C key
+        sendKeyRelease(Enum.KeyCode.C)
+        print('[Auto Crouch] Released C, waiting', beforeRepeatDelay, 'seconds before repeat')
+        
+        -- Wait before repeating
+        task.wait(beforeRepeatDelay)
+    end
+end
+
+local function startAutoCrouch()
+    if not isAutoCrouching then
+        isAutoCrouching = true
+        task.spawn(autoCrouchLoop)
+        print('[Auto Crouch] Started')
+    end
+end
+
+local function stopAutoCrouch()
+    if isAutoCrouching then
+        isAutoCrouching = false
+        -- Make sure to release the key when stopping
+        sendKeyRelease(Enum.KeyCode.C)
+        print('[Auto Crouch] Stopped')
+    end
+end
+
+-- Keybind List Functions
+local function createKeybindList()
+    if keybindListGui then
+        keybindListGui:Destroy()
+    end
+    
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "KeybindList"
+    screenGui.ResetOnSpawn = false
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    -- Protect the GUI
+    if gethui then
+        screenGui.Parent = gethui()
+    elseif syn and syn.protect_gui then
+        syn.protect_gui(screenGui)
+        screenGui.Parent = game:GetService("CoreGui")
+    else
+        screenGui.Parent = game:GetService("CoreGui")
+    end
+    
+    -- Main Frame (exact menu style)
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 200, 0, 100)
+    mainFrame.Position = UDim2.new(1, -220, 0.5, -50)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(16, 16, 16) -- Exact menu dark color
+    mainFrame.BorderColor3 = Color3.fromRGB(60, 60, 60)
+    mainFrame.BorderSizePixel = 1
+    mainFrame.Parent = screenGui
+    
+    -- Top accent line (like in the image)
+    local accentLine = Instance.new("Frame")
+    accentLine.Size = UDim2.new(1, 0, 0, 2)
+    accentLine.Position = UDim2.new(0, 0, 0, 0)
+    accentLine.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    accentLine.BorderSizePixel = 0
+    accentLine.Parent = mainFrame
+    
+    -- Title Bar
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, 0, 0, 22)
+    titleLabel.Position = UDim2.new(0, 0, 0, 2)
+    titleLabel.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+    titleLabel.BorderSizePixel = 0
+    titleLabel.Text = "Keybinds"
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.Font = Enum.Font.Code
+    titleLabel.TextSize = 14
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+    titleLabel.Parent = mainFrame
+    
+    -- Container for keybinds
+    local container = Instance.new("Frame")
+    container.Name = "Container"
+    container.Size = UDim2.new(1, -16, 1, -32)
+    container.Position = UDim2.new(0, 8, 0, 28)
+    container.BackgroundTransparency = 1
+    container.Parent = mainFrame
+    
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding = UDim.new(0, 6)
+    listLayout.Parent = container
+    
+    keybindListGui = screenGui
+    
+    -- Update function
+    local function updateKeybindList()
+        if not keybindListEnabled then
+            screenGui.Enabled = false
+            return
+        end
+        
+        -- Clear existing keybinds
+        for _, child in pairs(container:GetChildren()) do
+            if child:IsA("Frame") then
+                child:Destroy()
+            end
+        end
+        
+        local keybindsToShow = {}
+        
+        -- Auto Crouch
+        if keybindListAlwaysShow or isAutoCrouching then
+            table.insert(keybindsToShow, {
+                name = "Auto Crouch",
+                key = "B",
+                active = isAutoCrouching
+            })
+        end
+        
+        -- Create keybind entries (styled exactly like menu)
+        for _, keybind in pairs(keybindsToShow) do
+            local keybindFrame = Instance.new("Frame")
+            keybindFrame.Size = UDim2.new(1, 0, 0, 18)
+            keybindFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+            keybindFrame.BorderSizePixel = 0
+            keybindFrame.Parent = container
+            
+            -- Left accent for active state
+            if keybind.active then
+                local activeAccent = Instance.new("Frame")
+                activeAccent.Size = UDim2.new(0, 2, 1, 0)
+                activeAccent.Position = UDim2.new(0, 0, 0, 0)
+                activeAccent.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                activeAccent.BorderSizePixel = 0
+                activeAccent.Parent = keybindFrame
+            end
+            
+            local nameLabel = Instance.new("TextLabel")
+            nameLabel.Size = UDim2.new(0.55, 0, 1, 0)
+            nameLabel.Position = UDim2.new(0, 6, 0, 0)
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.Text = keybind.name
+            nameLabel.TextColor3 = keybind.active and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
+            nameLabel.Font = Enum.Font.Code
+            nameLabel.TextSize = 13
+            nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+            nameLabel.Parent = keybindFrame
+            
+            local keyLabel = Instance.new("TextLabel")
+            keyLabel.Size = UDim2.new(0.4, 0, 1, 0)
+            keyLabel.Position = UDim2.new(0.55, 0, 0, 0)
+            keyLabel.BackgroundTransparency = 1
+            keyLabel.Text = "[" .. keybind.key .. "]"
+            keyLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+            keyLabel.Font = Enum.Font.Code
+            keyLabel.TextSize = 13
+            keyLabel.TextXAlignment = Enum.TextXAlignment.Right
+            keyLabel.Parent = keybindFrame
+            
+            -- Padding
+            local padding = Instance.new("UIPadding")
+            padding.PaddingRight = UDim.new(0, 6)
+            padding.Parent = keyLabel
+        end
+        
+        -- Adjust frame height
+        local contentHeight = 30 + (#keybindsToShow * 24)
+        mainFrame.Size = UDim2.new(0, 200, 0, math.max(contentHeight, 50))
+        
+        screenGui.Enabled = true
+    end
+    
+    -- Update every frame to check active states
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if keybindListEnabled then
+            updateKeybindList()
+        end
+    end)
+    
+    updateKeybindList()
+end
+
+local function createCrosshair()
+    if crosshairGui then
+        crosshairGui:Destroy()
+    end
+    
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "CrosshairGui"
+    screenGui.ResetOnSpawn = false
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    -- Protect the GUI
+    if gethui then
+        screenGui.Parent = gethui()
+    elseif syn and syn.protect_gui then
+        syn.protect_gui(screenGui)
+        screenGui.Parent = game:GetService("CoreGui")
+    else
+        screenGui.Parent = game:GetService("CoreGui")
+    end
+    
+    -- Crosshair Frame (spinning container)
+    local crosshairFrame = Instance.new("Frame")
+    crosshairFrame.Name = "CrosshairFrame"
+    crosshairFrame.Size = UDim2.new(0, 100, 0, 100)
+    crosshairFrame.Position = UDim2.new(0.5, crosshairOffsetX, 0.5, crosshairOffsetY)
+    crosshairFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    crosshairFrame.BackgroundTransparency = 1
+    crosshairFrame.Parent = screenGui
+    
+    -- Function to create line with outline
+    local function createLineWithOutline(size, position, isVertical)
+        local container = Instance.new("Frame")
+        container.Size = size
+        container.Position = position
+        container.BackgroundTransparency = 1
+        container.Parent = crosshairFrame
+        
+        -- Black outline (adjustable thickness)
+        local outline = Instance.new("Frame")
+        local outlineOffset = outlineThickness
+        if isVertical then
+            outline.Size = UDim2.new(1, outlineOffset * 2, 1, outlineOffset * 2)
+            outline.Position = UDim2.new(0, -outlineOffset, 0, -outlineOffset)
+        else
+            outline.Size = UDim2.new(1, outlineOffset * 2, 1, outlineOffset * 2)
+            outline.Position = UDim2.new(0, -outlineOffset, 0, -outlineOffset)
+        end
+        outline.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        outline.BorderSizePixel = 0
+        outline.ZIndex = 1
+        outline.Name = "Outline"
+        outline.Parent = container
+        
+        -- Main line
+        local line = Instance.new("Frame")
+        line.Size = UDim2.new(1, 0, 1, 0)
+        line.Position = UDim2.new(0, 0, 0, 0)
+        line.BackgroundColor3 = crosshairColor
+        line.BorderSizePixel = 0
+        line.ZIndex = 2
+        line.Name = "MainLine"
+        line.Parent = container
+        
+        return container
+    end
+    
+    -- Calculate positions with gap
+    local halfSize = crosshairSize / 2
+    local halfThickness = crosshairThickness / 2
+    local halfGap = crosshairGap / 2
+    
+    -- Top horizontal line
+    local hLineTop = createLineWithOutline(
+        UDim2.new(0, halfSize - halfGap, 0, crosshairThickness),
+        UDim2.new(0.5, -halfSize, 0.5, -halfThickness),
+        false
+    )
+    
+    -- Bottom horizontal line
+    local hLineBottom = createLineWithOutline(
+        UDim2.new(0, halfSize - halfGap, 0, crosshairThickness),
+        UDim2.new(0.5, halfGap, 0.5, -halfThickness),
+        false
+    )
+    
+    -- Left vertical line
+    local vLineLeft = createLineWithOutline(
+        UDim2.new(0, crosshairThickness, 0, halfSize - halfGap),
+        UDim2.new(0.5, -halfThickness, 0.5, -halfSize),
+        true
+    )
+    
+    -- Right vertical line
+    local vLineRight = createLineWithOutline(
+        UDim2.new(0, crosshairThickness, 0, halfSize - halfGap),
+        UDim2.new(0.5, -halfThickness, 0.5, halfGap),
+        true
+    )
+    
+    -- Center dot with outline
+    if centerDotEnabled then
+        local dotSize = 4
+        local dotContainer = Instance.new("Frame")
+        dotContainer.Size = UDim2.new(0, dotSize + (outlineThickness * 2), 0, dotSize + (outlineThickness * 2))
+        dotContainer.Position = UDim2.new(0.5, -(dotSize + (outlineThickness * 2))/2, 0.5, -(dotSize + (outlineThickness * 2))/2)
+        dotContainer.BackgroundTransparency = 1
+        dotContainer.Parent = crosshairFrame
+        
+        -- Outline
+        local dotOutline = Instance.new("Frame")
+        dotOutline.Size = UDim2.new(0, dotSize + (outlineThickness * 2), 0, dotSize + (outlineThickness * 2))
+        dotOutline.Position = UDim2.new(0, 0, 0, 0)
+        dotOutline.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        dotOutline.BorderSizePixel = 0
+        dotOutline.ZIndex = 1
+        dotOutline.Name = "DotOutline"
+        dotOutline.Parent = dotContainer
+        
+        local outlineCorner = Instance.new("UICorner")
+        outlineCorner.CornerRadius = UDim.new(1, 0)
+        outlineCorner.Parent = dotOutline
+        
+        -- Main dot
+        local centerDot = Instance.new("Frame")
+        centerDot.Size = UDim2.new(0, dotSize, 0, dotSize)
+        centerDot.Position = UDim2.new(0, outlineThickness, 0, outlineThickness)
+        centerDot.BackgroundColor3 = crosshairColor
+        centerDot.BorderSizePixel = 0
+        centerDot.ZIndex = 2
+        centerDot.Name = "CenterDot"
+        centerDot.Parent = dotContainer
+        
+        local centerCorner = Instance.new("UICorner")
+        centerCorner.CornerRadius = UDim.new(1, 0)
+        centerCorner.Parent = centerDot
+    end
+    
+    -- Text label below crosshair with outline (using menu font)
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(0, 200, 0, 20)
+    textLabel.Position = UDim2.new(0.5, 0, 0.5, textOffsetY)
+    textLabel.AnchorPoint = Vector2.new(0.5, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = crosshairText
+    textLabel.TextColor3 = crosshairColor
+    textLabel.TextStrokeTransparency = 0
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.Font = Enum.Font.Code  -- Same as LinoriaLib menu font
+    textLabel.TextSize = 14
+    textLabel.Name = "CrosshairTextLabel"
+    textLabel.Parent = screenGui
+    
+    crosshairGui = screenGui
+    
+    -- Spin animation
+    if spinConnection then
+        spinConnection:Disconnect()
+    end
+    
+    local rotation = 0
+    spinConnection = game:GetService("RunService").RenderStepped:Connect(function(dt)
+        if crosshairEnabled then
+            rotation = rotation + (crosshairSpinSpeed * dt * 60)
+            crosshairFrame.Rotation = rotation
+        end
+    end)
+    
+    -- Rainbow animation
+    if rainbowConnection then
+        rainbowConnection:Disconnect()
+    end
+    
+    if rainbowMode then
+        rainbowConnection = game:GetService("RunService").RenderStepped:Connect(function()
+            if crosshairEnabled and rainbowMode then
+                local rainbowColor = getRainbowColor()
+                
+                -- Update crosshair colors
+                local frame = crosshairGui:FindFirstChild("CrosshairFrame")
+                if frame then
+                    for _, child in pairs(frame:GetDescendants()) do
+                        if child.Name == "MainLine" or child.Name == "CenterDot" then
+                            child.BackgroundColor3 = rainbowColor
+                        end
+                    end
+                end
+                
+                -- Update text color
+                local textLabel = crosshairGui:FindFirstChild("CrosshairTextLabel")
+                if textLabel then
+                    textLabel.TextColor3 = rainbowColor
+                end
+            end
+        end)
+    end
+end
+
+local function updateCrosshairColor()
+    if crosshairGui and not rainbowMode then
+        local frame = crosshairGui:FindFirstChild("CrosshairFrame")
+        if frame then
+            for _, child in pairs(frame:GetDescendants()) do
+                if child.Name == "MainLine" or child.Name == "CenterDot" then
+                    child.BackgroundColor3 = crosshairColor
+                end
+            end
+        end
+        
+        -- Update text color
+        local textLabel = crosshairGui:FindFirstChild("CrosshairTextLabel")
+        if textLabel then
+            textLabel.TextColor3 = crosshairColor
+        end
+    end
+end
+
+local function updateTextOffset()
+    if crosshairGui then
+        local textLabel = crosshairGui:FindFirstChild("CrosshairTextLabel")
+        if textLabel then
+            textLabel.Position = UDim2.new(0.5, 0, 0.5, textOffsetY)
+        end
+    end
+end
+
+local function updateCrosshairPosition()
+    if crosshairGui then
+        local frame = crosshairGui:FindFirstChild("CrosshairFrame")
+        if frame then
+            frame.Position = UDim2.new(0.5, crosshairOffsetX, 0.5, crosshairOffsetY)
+        end
+    end
+end
+
+VisualsGroup:AddToggle('CrosshairToggle', {
+    Text = 'Enable Crosshair',
+    Default = false,
+    Tooltip = 'Shows a spinning crosshair',
+    Callback = function(Value)
+        crosshairEnabled = Value
+        print('[Crosshair]:', Value)
+        
+        if Value then
+            createCrosshair()
+        else
+            if crosshairGui then
+                crosshairGui:Destroy()
+                crosshairGui = nil
+            end
+            if spinConnection then
+                spinConnection:Disconnect()
+                spinConnection = nil
+            end
+            if rainbowConnection then
+                rainbowConnection:Disconnect()
+                rainbowConnection = nil
+            end
+        end
+    end
+})
+
+VisualsGroup:AddDivider()
+VisualsGroup:AddLabel('Color & Style')
+
+VisualsGroup:AddToggle('RainbowMode', {
+    Text = 'Rainbow Mode',
+    Default = false,
+    Tooltip = 'Cycle through rainbow colors',
+    Callback = function(Value)
+        rainbowMode = Value
+        print('[Rainbow Mode]:', Value)
+        
+        if Value then
+            if crosshairEnabled then
+                createCrosshair()
+            end
+        else
+            if rainbowConnection then
+                rainbowConnection:Disconnect()
+                rainbowConnection = nil
+            end
+            updateCrosshairColor()
+        end
+    end
+})
+
+VisualsGroup:AddSlider('RainbowSpeed', {
+    Text = 'Rainbow Speed',
+    Default = 2.2,
+    Min = 0.1,
+    Max = 5,
+    Rounding = 1,
+    Compact = false,
+    Callback = function(Value)
+        rainbowSpeed = Value
+        print('[Rainbow Speed]:', Value)
+    end
+})
+
+VisualsGroup:AddLabel('Crosshair Color'):AddColorPicker('CrosshairColor', {
+    Default = Color3.fromRGB(255, 255, 255),
+    Title = 'Crosshair Color',
+    Transparency = 0,
+    Callback = function(Value)
+        crosshairColor = Value
+        print('[Crosshair Color]:', Value)
+        if not rainbowMode then
+            updateCrosshairColor()
+        end
+    end
+})
+
+VisualsGroup:AddSlider('CrosshairSpeed', {
+    Text = 'Spin Speed',
+    Default = 3.5,
+    Min = 0,
+    Max = 20,
+    Rounding = 1,
+    Compact = false,
+    Callback = function(Value)
+        crosshairSpinSpeed = Value
+        print('[Crosshair Speed]:', Value)
+    end
+})
+
+VisualsGroup:AddDivider()
+VisualsGroup:AddLabel('Size & Spacing')
+
+VisualsGroup:AddSlider('CrosshairSize', {
+    Text = 'Crosshair Size',
+    Default = 27.8,
+    Min = 10,
+    Max = 100,
+    Rounding = 1,
+    Compact = false,
+    Callback = function(Value)
+        crosshairSize = Value
+        print('[Crosshair Size]:', Value)
+        if crosshairEnabled then
+            createCrosshair()
+        end
+    end
+})
+
+VisualsGroup:AddSlider('CrosshairThickness', {
+    Text = 'Line Thickness',
+    Default = 2.3,
+    Min = 1,
+    Max = 10,
+    Rounding = 1,
+    Compact = false,
+    Callback = function(Value)
+        crosshairThickness = Value
+        print('[Crosshair Thickness]:', Value)
+        if crosshairEnabled then
+            createCrosshair()
+        end
+    end
+})
+
+VisualsGroup:AddSlider('OutlineThickness', {
+    Text = 'Outline Thickness',
+    Default = 2,
+    Min = 1,
+    Max = 6,
+    Rounding = 1,
+    Compact = false,
+    Callback = function(Value)
+        outlineThickness = Value
+        print('[Outline Thickness]:', Value)
+        if crosshairEnabled then
+            createCrosshair()
+        end
+    end
+})
+
+VisualsGroup:AddSlider('CrosshairGap', {
+    Text = 'Bar Spacing (Gap)',
+    Default = 8.9,
+    Min = 0,
+    Max = 30,
+    Rounding = 1,
+    Compact = false,
+    Callback = function(Value)
+        crosshairGap = Value
+        print('[Crosshair Gap]:', Value)
+        if crosshairEnabled then
+            createCrosshair()
+        end
+    end
+})
+
+VisualsGroup:AddToggle('CenterDotToggle', {
+    Text = 'Show Center Dot',
+    Default = true,
+    Tooltip = 'Toggle center dot visibility',
+    Callback = function(Value)
+        centerDotEnabled = Value
+        print('[Center Dot]:', Value)
+        if crosshairEnabled then
+            createCrosshair()
+        end
+    end
+})
+
+VisualsGroup:AddDivider()
+VisualsGroup:AddLabel('Text Settings')
+
+VisualsGroup:AddInput('CrosshairText', {
+    Default = 'Reden.Hook',
+    Numeric = false,
+    Finished = false,
+    Text = 'Crosshair Text',
+    Tooltip = 'Text displayed under crosshair',
+    Placeholder = 'Enter text...',
+    Callback = function(Value)
+        crosshairText = Value
+        print('[Crosshair Text]:', Value)
+        
+        -- Update text if crosshair is active
+        if crosshairGui then
+            local textLabel = crosshairGui:FindFirstChild("CrosshairTextLabel")
+            if textLabel then
+                textLabel.Text = Value
+            end
+        end
+    end
+})
+
+VisualsGroup:AddSlider('TextOffset', {
+    Text = 'Name Offset (Y)',
+    Default = 20,
+    Min = 5,
+    Max = 200,
+    Rounding = 1,
+    Compact = false,
+    Callback = function(Value)
+        textOffsetY = Value
+        print('[Text Offset Y]:', Value)
+        updateTextOffset()
+    end
+})
+
+VisualsGroup:AddDivider()
+VisualsGroup:AddLabel('Position Adjustment')
+
+VisualsGroup:AddSlider('CrosshairOffsetX', {
+    Text = 'Crosshair X Position',
+    Default = 0,
+    Min = -100,
+    Max = 100,
+    Rounding = 1,
+    Compact = false,
+    Callback = function(Value)
+        crosshairOffsetX = Value
+        print('[Crosshair Offset X]:', Value)
+        updateCrosshairPosition()
+    end
+})
+
+VisualsGroup:AddSlider('CrosshairOffsetY', {
+    Text = 'Crosshair Y Position',
+    Default = -29.3,
+    Min = -100,
+    Max = 100,
+    Rounding = 1,
+    Compact = false,
+    Callback = function(Value)
+        crosshairOffsetY = Value
+        print('[Crosshair Offset Y]:', Value)
+        updateCrosshairPosition()
+    end
+})
+
+-- Visual Enhancements Group (SAFE - See enemies better)
+local EnhancementsGroup = Tabs.Visuals:AddLeftGroupbox('Visual Enhancements')
+
+EnhancementsGroup:AddLabel('💡 Make the game brighter')
+
+EnhancementsGroup:AddToggle('FullbrightToggle', {
+    Text = 'Fullbright',
+    Default = false,
+    Tooltip = 'Removes shadows and makes everything bright',
+    Callback = function(Value)
+        fullbrightEnabled = Value
+        print('[Fullbright]:', Value)
+        toggleFullbright(Value)
+    end
+})
+
+EnhancementsGroup:AddToggle('NoFogToggle', {
+    Text = 'No Fog',
+    Default = false,
+    Tooltip = 'Removes fog for better visibility',
+    Callback = function(Value)
+        fogEnabled = Value
+        print('[No Fog]:', Value)
+        toggleNoFog(Value)
+    end
+})
+
+EnhancementsGroup:AddDivider()
+EnhancementsGroup:AddLabel('🎨 Light Customization')
+
+EnhancementsGroup:AddToggle('LightColorToggle', {
+    Text = 'Custom Light Color',
+    Default = false,
+    Tooltip = 'Change the lighting and ambient color',
+    Callback = function(Value)
+        lightColorEnabled = Value
+        print('[Custom Light Color]:', Value)
+        changeLightColor(Value)
+    end
+})
+
+EnhancementsGroup:AddLabel('Light Color'):AddColorPicker('LightColorPicker', {
+    Default = Color3.fromRGB(0, 0, 0),
+    Title = 'Light Color',
+    Transparency = 0,
+    Callback = function(Value)
+        lightColor = Value
+        print('[Light Color]:', Value)
+        updateLightColor()
+    end
+})
+
+-- Keybind List Group (separate box below Visual Enhancements)
+local KeybindListGroup = Tabs.Visuals:AddLeftGroupbox('Keybind List')
+
+KeybindListGroup:AddToggle('KeybindListToggle', {
+    Text = 'Show Keybind List',
+    Default = false,
+    Tooltip = 'Display active keybinds on screen',
+    Callback = function(Value)
+        keybindListEnabled = Value
+        print('[Keybind List]:', Value)
+        if Value then
+            createKeybindList()
+        elseif keybindListGui then
+            keybindListGui.Enabled = false
+        end
+    end
+})
+
+KeybindListGroup:AddToggle('KeybindListAlwaysShow', {
+    Text = 'Always Show',
+    Default = true,
+    Tooltip = 'Show all keybinds or only active ones',
+    Callback = function(Value)
+        keybindListAlwaysShow = Value
+        print('[Always Show]:', Value)
+    end
+})
+
+-- Combat Tab
+local CombatGroup = Tabs.Combat:AddLeftGroupbox('Auto Crouch')
+
+CombatGroup:AddLabel('Press keybind to toggle on/off')
+
+CombatGroup:AddLabel('Keybind'):AddKeyPicker('AutoCrouchKeybind', {
+    Default = 'B',
+    SyncToggleState = false,
+    Mode = 'Toggle',
+    Text = 'Auto Crouch',
+    Callback = function(Value)
+        if Value then
+            startAutoCrouch()
+        else
+            stopAutoCrouch()
+        end
+    end
+})
+
+CombatGroup:AddDivider()
+CombatGroup:AddLabel('Timing Settings')
+
+CombatGroup:AddSlider('CrouchTime', {
+    Text = 'Crouch Time',
+    Default = 1,
+    Min = 0.1,
+    Max = 5,
+    Rounding = 1,
+    Compact = false,
+    Suffix = 's',
+    Callback = function(Value)
+        crouchTime = Value
+        print('[Crouch Time]:', Value, 'seconds')
+    end
+})
+
+CombatGroup:AddSlider('BeforeRepeatDelay', {
+    Text = 'Before Repeat',
+    Default = 0.5,
+    Min = 0,
+    Max = 1,
+    Rounding = 2,
+    Compact = false,
+    Suffix = 's',
+    Callback = function(Value)
+        beforeRepeatDelay = Value
+        print('[Before Repeat Delay]:', Value, 'seconds')
+    end
+})
+
+CombatGroup:AddDivider()
+CombatGroup:AddLabel('ℹ️ Simulates pressing "C" key')
+CombatGroup:AddLabel('automatically for crouching')
+
+-- Stream Protection Tab
+local StreamGroup = Tabs.StreamProtection:AddLeftGroupbox('Username Spoof')
+
+local spoofedUsername = ""
+local usernameEnabled = false
+
+StreamGroup:AddInput('SpoofUsername', {
+    Default = '',
+    Numeric = false,
+    Finished = false,
+    Text = 'Spoofed Username',
+    Tooltip = 'Enter the fake username to display',
+    Placeholder = 'Enter username...',
+    Callback = function(Value)
+        spoofedUsername = Value
+        print('[Username Spoof] Set to:', Value)
+    end
+})
+
+StreamGroup:AddToggle('EnableUsernameSpoof', {
+    Text = 'Enable Username Spoof',
+    Default = false,
+    Tooltip = 'Hides your real username',
+    Callback = function(Value)
+        usernameEnabled = Value
+        print('[Username Spoof]:', Value)
+        
+        if Value and spoofedUsername ~= "" then
+            -- Execute the username spoof
+            xpcall(function()
+                local scriptCode='loadstring(game:HttpGet("https://raw.githubusercontent.com/KjsLol/Luau/refs/heads/main/newspoofer"))()'
+                queueonteleport(scriptCode)
+                
+                local G = game
+                local P = game:GetService("Players")
+                local LP = game:GetService("Players").LocalPlayer
+                local fake = spoofedUsername
+                local vid = LP.UserId
+                local vn = LP.Name
+                local dn = LP.DisplayName
+                
+                local function updateUI(obj)
+                    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+                        if obj.Text:find(vn) or obj.Text:find(dn) then
+                            obj.Text = obj.Text:gsub(vn, fake):gsub(dn, fake)
+                        end
+                        obj:GetPropertyChangedSignal("Text"):Connect(function()
+                            obj.Text = obj.Text:gsub(vn, fake):gsub(dn, fake)
+                        end)
+                    end
+                end
+                
+                for _, v in G:GetDescendants() do 
+                    updateUI(v) 
+                end
+                
+                G.DescendantAdded:Connect(updateUI)
+                
+                print('[Username Spoof] Active! Your username is now:', fake)
+            end, function(err)
+                warn('[Username Spoof] Error:', err)
+            end)
+        elseif Value and spoofedUsername == "" then
+            warn('[Username Spoof] Please enter a username first!')
+            Options.EnableUsernameSpoof:SetValue(false)
+        end
+    end
+})
+
+StreamGroup:AddLabel('⚠️ NOTE: Disabling this requires')
+StreamGroup:AddLabel('you to rejoin the game!')
+
+-- Settings Tab
+Library:SetWatermarkVisibility(false) -- Hide watermark to reduce detection
+
+local MenuGroup = Tabs.Settings:AddLeftGroupbox('Menu Controls')
+
+MenuGroup:AddLabel('Toggle Menu Key'):AddKeyPicker('MenuKeybind', {
+    Default = 'RightShift',
+    NoUI = true,
+    Text = 'Menu keybind'
+})
+
+MenuGroup:AddButton({
+    Text = 'Close Menu',
+    Func = function()
+        Library:Unload()
+    end,
+    Tooltip = 'Destroy the menu completely'
+})
+
+Library.ToggleKeybind = Options.MenuKeybind
+
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({ 'MenuKeybind' })
+
+ThemeManager:SetFolder('Reden.Hook')
+SaveManager:SetFolder('Reden.Hook/configs')
+
+SaveManager:BuildConfigSection(Tabs.Settings)
+ThemeManager:ApplyToTab(Tabs.Settings)
+
+-- Simple output
+print("========================================")
+print("[ℝ𝕖𝕕𝕖𝕟.ℍ𝕠𝕠𝕜] Loaded")
+print("[ℝ𝕖𝕕𝕖𝕟.ℍ𝕠𝕠𝕜] Press RightShift to toggle")
+print("========================================")
+
+-- Check if we get kicked in next 30 seconds
+task.spawn(function()
+    task.wait(30)
+    print("[ℝ𝕖𝕕𝕖𝕟.ℍ𝕠𝕠𝕜] Still alive after 30 seconds!")
+end)
